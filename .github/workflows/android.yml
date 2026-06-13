@@ -14,11 +14,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
       - name: Fix local.properties
-        run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          cat gradle.properties | grep -v aapt2 > gradle.properties.tmp
-          mv gradle.properties.tmp gradle.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
       - name: Build APK
         run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
