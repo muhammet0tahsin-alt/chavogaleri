@@ -14,9 +14,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
-      - name: Build APK
+      - name: Fix local.properties
         run: |
-          gradle assembleDebug
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          cat gradle.properties | grep -v aapt2 > gradle.properties.tmp
+          mv gradle.properties.tmp gradle.properties
+      - name: Build APK
+        run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: chavo-apk
