@@ -1,6 +1,6 @@
 package com.chavogaleri;
 
-import android.content.ContentResolver;
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,6 +16,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,6 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private MediaAdapter adapter;
     private ArrayList<String> mediaList = new ArrayList<>();
     private File safeFolder;
+    private Uri pendingDeleteUri;
+    private String pendingDestPath;
 
     private ActivityResultLauncher<String[]> pickMedia = registerForActivityResult(
         new ActivityResultContracts.OpenMultipleDocuments(),
@@ -32,6 +36,19 @@ public class MainActivity extends AppCompatActivity {
                     moveToSafe(uri);
                 }
                 loadMedia();
+            }
+        }
+    );
+
+    private ActivityResultLauncher<IntentSenderRequest> deletePermission = registerForActivityResult(
+        new ActivityResultContracts.StartIntentSenderForResult(),
+        result -> {
+            if (result.getResultCode() == Activity.RESULT_OK && pendingDeleteUri != null) {
+                try {
+                    getContentResolver().delete(pendingDeleteUri, null, null);
+                } catch (Exception e) {}
+                pendingDeleteUri = null;
+                Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
             }
         }
     );
@@ -100,12 +117,17 @@ public class MainActivity extends AppCompatActivity {
             in.close();
             out.close();
 
-            // Orijinali sil
-            int deleted = getContentResolver().delete(uri, null, null);
-            if (deleted > 0) {
-                Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Eklendi! Orijinali manuel silin.", Toast.LENGTH_LONG).show();
+            try {
+                android.app.PendingIntent pi = MediaStore.createDeleteRequest(
+                    getContentResolver(),
+                    Collections.singletonList(uri)
+                );
+                pendingDeleteUri = uri;
+                deletePermission.launch(
+                    new androidx.activity.result.IntentSenderRequest.Builder(pi.getIntentSender()).build()
+                );
+            } catch (Exception e) {
+                Toast.makeText(this, "Eklendi! Orijinali galeride silin.", Toast.LENGTH_LONG).show();
             }
         } catch (Exception e) {
             Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show();
