@@ -1,8 +1,10 @@
 package com.chavogaleri;
 
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.widget.GridView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
@@ -98,7 +100,13 @@ public class MainActivity extends AppCompatActivity {
             in.close();
             out.close();
 
-            Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
+            // Orijinali sil
+            int deleted = getContentResolver().delete(uri, null, null);
+            if (deleted > 0) {
+                Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Eklendi! Orijinali manuel silin.", Toast.LENGTH_LONG).show();
+            }
         } catch (Exception e) {
             Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
