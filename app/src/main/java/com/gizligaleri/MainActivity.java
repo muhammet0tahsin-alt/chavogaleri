@@ -1,6 +1,7 @@
 package com.chavogaleri;
 
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -8,6 +9,7 @@ import android.provider.MediaStore;
 import android.widget.GridView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -16,7 +18,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
@@ -26,7 +27,6 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> mediaList = new ArrayList<>();
     private File safeFolder;
     private Uri pendingDeleteUri;
-    private String pendingDestPath;
 
     private ActivityResultLauncher<String[]> pickMedia = registerForActivityResult(
         new ActivityResultContracts.OpenMultipleDocuments(),
@@ -48,7 +48,8 @@ public class MainActivity extends AppCompatActivity {
                     getContentResolver().delete(pendingDeleteUri, null, null);
                 } catch (Exception e) {}
                 pendingDeleteUri = null;
-                Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Gizlendi!", Toast.LENGTH_SHORT).show();
+                loadMedia();
             }
         }
     );
@@ -118,13 +119,13 @@ public class MainActivity extends AppCompatActivity {
             out.close();
 
             try {
-                android.app.PendingIntent pi = MediaStore.createDeleteRequest(
+                PendingIntent pi = MediaStore.createDeleteRequest(
                     getContentResolver(),
                     Collections.singletonList(uri)
                 );
                 pendingDeleteUri = uri;
                 deletePermission.launch(
-                    new androidx.activity.result.IntentSenderRequest.Builder(pi.getIntentSender()).build()
+                    new IntentSenderRequest.Builder(pi.getIntentSender()).build()
                 );
             } catch (Exception e) {
                 Toast.makeText(this, "Eklendi! Orijinali galeride silin.", Toast.LENGTH_LONG).show();
