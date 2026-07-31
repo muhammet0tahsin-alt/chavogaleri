@@ -1,24 +1,25 @@
 package com.chavogaleri;
 
-import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.widget.GridView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,7 +27,6 @@ public class MainActivity extends AppCompatActivity {
     private MediaAdapter adapter;
     private ArrayList<String> mediaList = new ArrayList<>();
     private File safeFolder;
-    private Uri pendingDeleteUri;
 
     private ActivityResultLauncher<String[]> pickMedia = registerForActivityResult(
         new ActivityResultContracts.OpenMultipleDocuments(),
@@ -35,20 +35,6 @@ public class MainActivity extends AppCompatActivity {
                 for (Uri uri : uris) {
                     moveToSafe(uri);
                 }
-                loadMedia();
-            }
-        }
-    );
-
-    private ActivityResultLauncher<IntentSenderRequest> deletePermission = registerForActivityResult(
-        new ActivityResultContracts.StartIntentSenderForResult(),
-        result -> {
-            if (result.getResultCode() == Activity.RESULT_OK && pendingDeleteUri != null) {
-                try {
-                    getContentResolver().delete(pendingDeleteUri, null, null);
-                } catch (Exception e) {}
-                pendingDeleteUri = null;
-                Toast.makeText(this, "Gizlendi!", Toast.LENGTH_SHORT).show();
                 loadMedia();
             }
         }
@@ -80,17 +66,27 @@ public class MainActivity extends AppCompatActivity {
         });
 
         gridView.setOnItemLongClickListener((parent, view, position, id) -> {
+            String path = mediaList.get(position);
             new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Sil")
-                .setMessage("Bu dosyayı silmek istiyor musun?")
-                .setPositiveButton("Evet", (dialog, which) -> {
-                    File file = new File(mediaList.get(position));
-                    if (file.delete()) {
-                        Toast.makeText(this, "Silindi!", Toast.LENGTH_SHORT).show();
-                        loadMedia();
+                .setTitle("Ne yapmak istiyorsun?")
+                .setItems(new String[]{"Galeriye geri al", "Sil"}, (dialog, which) -> {
+                    if (which == 0) {
+                        restoreToGallery(path);
+                    } else {
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Emin misin?")
+                            .setMessage("Bu dosya tamamen silinecek!")
+                            .setPositiveButton("Evet sil", (d, w) -> {
+                                File file = new File(path);
+                                if (file.delete()) {
+                                    Toast.makeText(this, "Silindi!", Toast.LENGTH_SHORT).show();
+                                    loadMedia();
+                                }
+                            })
+                            .setNegativeButton("Hayır", null)
+                            .show();
                     }
                 })
-                .setNegativeButton("Hayır", null)
                 .show();
             return true;
         });
@@ -118,17 +114,40 @@ public class MainActivity extends AppCompatActivity {
             in.close();
             out.close();
 
-            try {
-                PendingIntent pi = MediaStore.createDeleteRequest(
-                    getContentResolver(),
-                    Collections.singletonList(uri)
-                );
-                pendingDeleteUri = uri;
-                deletePermission.launch(
-                    new IntentSenderRequest.Builder(pi.getIntentSender()).build()
-                );
-            } catch (Exception e) {
-                Toast.makeText(this, "Eklendi! Orijinali galeride silin.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Eklendi! Galeriden orijinali silebilirsin.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void restoreToGallery(String path) {
+        try {
+            File file = new File(path);
+            boolean isVideo = path.endsWith(".mp4") || path.endsWith(".mkv") || path.endsWith(".avi");
+
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, file.getName());
+            values.put(MediaStore.MediaColumns.MIME_TYPE, isVideo ? "video/mp4" : "image/jpeg");
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, 
+                isVideo ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_PICTURES);
+
+            Uri collection = isVideo 
+                ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+
+            Uri newUri = getContentResolver().insert(collection, values);
+            if (newUri != null) {
+                OutputStream out = getContentResolver().openOutputStream(newUri);
+                FileInputStream in = new FileInputStream(file);
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+                in.close();
+                out.close();
+
+                file.delete();
+                Toast.makeText(this, "Galeriye geri alındı!", Toast.LENGTH_SHORT).show();
+                loadMedia();
             }
         } catch (Exception e) {
             Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show();
