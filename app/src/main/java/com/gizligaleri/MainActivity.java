@@ -1,11 +1,8 @@
 package com.chavogaleri;
 
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.view.View;
 import android.widget.GridView;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
@@ -13,9 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -57,7 +54,25 @@ public class MainActivity extends AppCompatActivity {
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             Intent intent = new Intent(this, ViewerActivity.class);
             intent.putExtra("path", mediaList.get(position));
+            intent.putExtra("position", position);
+            intent.putStringArrayListExtra("list", mediaList);
             startActivity(intent);
+        });
+
+        gridView.setOnItemLongClickListener((parent, view, position, id) -> {
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Sil")
+                .setMessage("Bu dosyayı silmek istiyor musun?")
+                .setPositiveButton("Evet", (dialog, which) -> {
+                    File file = new File(mediaList.get(position));
+                    if (file.delete()) {
+                        Toast.makeText(this, "Silindi!", Toast.LENGTH_SHORT).show();
+                        loadMedia();
+                    }
+                })
+                .setNegativeButton("Hayır", null)
+                .show();
+            return true;
         });
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -68,23 +83,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void moveToSafe(Uri uri) {
         try {
-            String name = "media_" + System.currentTimeMillis();
+            String mimeType = getContentResolver().getType(uri);
+            String ext = ".jpg";
+            if (mimeType != null && mimeType.startsWith("video")) ext = ".mp4";
+
+            String name = "media_" + System.currentTimeMillis() + ext;
             File dest = new File(safeFolder, name);
-            FileInputStream in = (FileInputStream) getContentResolver().openInputStream(uri);
+
+            InputStream in = getContentResolver().openInputStream(uri);
             FileOutputStream out = new FileOutputStream(dest);
             byte[] buf = new byte[4096];
             int len;
             while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
             in.close();
             out.close();
-            getContentResolver().delete(uri, null, null);
+
             Toast.makeText(this, "Eklendi ve gizlendi!", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void loadMedia() {
+    void loadMedia() {
         mediaList.clear();
         File[] files = safeFolder.listFiles();
         if (files != null) {

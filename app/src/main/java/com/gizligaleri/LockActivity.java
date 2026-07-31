@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import java.util.concurrent.Executor;
@@ -13,7 +14,15 @@ public class LockActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        showBiometric();
+        
+        BiometricManager biometricManager = BiometricManager.from(this);
+        if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) 
+            == BiometricManager.BIOMETRIC_SUCCESS) {
+            showBiometric();
+        } else {
+            Toast.makeText(this, "Parmak izi sensörü bulunamadı!", Toast.LENGTH_LONG).show();
+            finish();
+        }
     }
 
     private void showBiometric() {
@@ -41,7 +50,8 @@ public class LockActivity extends AppCompatActivity {
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
             .setTitle("Chavo.exe")
             .setSubtitle("Parmak izinle giriş yap")
-            .setDeviceCredentialAllowed(true)
+            .setNegativeButtonText("İptal")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build();
 
         biometricPrompt.authenticate(promptInfo);

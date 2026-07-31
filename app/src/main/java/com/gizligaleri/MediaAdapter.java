@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import java.io.File;
 import java.util.ArrayList;
 
 public class MediaAdapter extends BaseAdapter {
@@ -35,16 +36,23 @@ public class MediaAdapter extends BaseAdapter {
             imageView = new ImageView(context);
             imageView.setLayoutParams(new ViewGroup.LayoutParams(300, 300));
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imageView.setPadding(4, 4, 4, 4);
         } else {
             imageView = (ImageView) convertView;
         }
 
         String path = mediaList.get(pos);
-        Bitmap bitmap = BitmapFactory.decodeFile(path);
-        if (bitmap != null) {
-            imageView.setImageBitmap(bitmap);
-        } else {
+        
+        if (path.endsWith(".mp4") || path.endsWith(".mkv") || path.endsWith(".avi") || path.endsWith(".3gp")) {
             imageView.setImageResource(android.R.drawable.ic_media_play);
+            imageView.setBackgroundColor(0xFF222222);
+        } else {
+            Bitmap bitmap = BitmapFactory.decodeFile(path);
+            if (bitmap != null) {
+                imageView.setImageBitmap(bitmap);
+            } else {
+                imageView.setImageResource(android.R.drawable.ic_menu_gallery);
+            }
         }
 
         return imageView;
